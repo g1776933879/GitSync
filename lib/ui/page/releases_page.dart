@@ -111,7 +111,7 @@ class _ReleasesPageState extends State<ReleasesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: colours.primaryDark,
+      backgroundColor: context.colours.primaryDark,
       body: SafeArea(
         child: Column(
           children: [
@@ -122,8 +122,8 @@ class _ReleasesPageState extends State<ReleasesPage> {
                   getBackButton(context, () => Navigator.of(context).pop()),
                   SizedBox(width: spaceXS),
                   Text(
-                    t.releases.toUpperCase(),
-                    style: TextStyle(color: colours.primaryLight, fontSize: textXL, fontWeight: FontWeight.bold),
+                    context.t.releases.toUpperCase(),
+                    style: TextStyle(color: context.colours.primaryLight, fontSize: textXL, fontWeight: FontWeight.bold),
                   ),
                   const Spacer(),
                   getOpenInBrowserButton(widget.gitProvider.releasesUrl(widget.remoteWebUrl)),
@@ -132,7 +132,7 @@ class _ReleasesPageState extends State<ReleasesPage> {
             ),
             Expanded(
               child: RefreshIndicator(
-                color: colours.tertiaryDark,
+                color: context.colours.tertiaryDark,
                 onRefresh: () async {
                   _fetchReleases();
                   await Future.delayed(const Duration(milliseconds: 500));
@@ -145,8 +145,8 @@ class _ReleasesPageState extends State<ReleasesPage> {
                             height: constraints.maxHeight,
                             child: Center(
                               child: Text(
-                                t.releasesNotFound.toUpperCase(),
-                                style: TextStyle(color: colours.secondaryLight, fontWeight: FontWeight.bold, fontSize: textLG),
+                                context.t.releasesNotFound.toUpperCase(),
+                                style: TextStyle(color: context.colours.secondaryLight, fontWeight: FontWeight.bold, fontSize: textLG),
                               ),
                             ),
                           ),
@@ -162,7 +162,7 @@ class _ReleasesPageState extends State<ReleasesPage> {
                             return Padding(
                               padding: EdgeInsets.all(spaceMD),
                               child: Center(
-                                child: CircularProgressIndicator(color: colours.secondaryLight, strokeWidth: spaceXXXXS),
+                                child: CircularProgressIndicator(color: context.colours.secondaryLight, strokeWidth: spaceXXXXS),
                               ),
                             );
                           }
@@ -216,6 +216,7 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
   };
 
   Future<void> _downloadAsset(ReleaseAsset asset) async {
+    final t = context.t;
     Fluttertoast.showToast(msg: t.downloading, toastLength: Toast.LENGTH_SHORT, gravity: null);
 
     try {
@@ -256,7 +257,7 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
         alignment: Alignment.topCenter,
         child: Container(
           padding: EdgeInsets.all(spaceSM),
-          decoration: BoxDecoration(color: colours.secondaryDark, borderRadius: BorderRadius.all(cornerRadiusSM)),
+          decoration: BoxDecoration(color: context.colours.secondaryDark, borderRadius: BorderRadius.all(cornerRadiusSM)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -266,7 +267,7 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
                 children: [
                   Padding(
                     padding: EdgeInsets.only(top: spaceXXXXS),
-                    child: FaIcon(FontAwesomeIcons.rocket, size: textMD, color: colours.tertiaryInfo),
+                    child: FaIcon(FontAwesomeIcons.rocket, size: textMD, color: context.colours.tertiaryInfo),
                   ),
                   SizedBox(width: spaceXS),
                   Expanded(
@@ -274,13 +275,13 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
                       title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(color: colours.primaryLight, fontSize: textMD, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: context.colours.primaryLight, fontSize: textMD, fontWeight: FontWeight.bold),
                     ),
                   ),
                   SizedBox(width: spaceXXS),
                   RotationTransition(
                     turns: _chevronTurns,
-                    child: FaIcon(FontAwesomeIcons.chevronDown, size: textXS, color: colours.tertiaryLight),
+                    child: FaIcon(FontAwesomeIcons.chevronDown, size: textXS, color: context.colours.tertiaryLight),
                   ),
                 ],
               ),
@@ -294,32 +295,32 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
                   children: [
                     Container(
                       padding: EdgeInsets.symmetric(horizontal: spaceXXS, vertical: spaceXXXXS),
-                      decoration: BoxDecoration(color: colours.tertiaryDark, borderRadius: BorderRadius.all(cornerRadiusXS)),
+                      decoration: BoxDecoration(color: context.colours.tertiaryDark, borderRadius: BorderRadius.all(cornerRadiusXS)),
                       child: Text(
                         release.tagName,
-                        style: TextStyle(color: colours.secondaryLight, fontSize: textXXS, fontWeight: FontWeight.bold),
+                        style: TextStyle(color: context.colours.secondaryLight, fontSize: textXXS, fontWeight: FontWeight.bold),
                       ),
                     ),
                     if (release.authorUsername.isNotEmpty) ...[
                       Text(
                         ' $bullet ',
-                        style: TextStyle(color: colours.tertiaryLight, fontSize: textXS),
+                        style: TextStyle(color: context.colours.tertiaryLight, fontSize: textXS),
                       ),
                       Flexible(
                         child: Text(
                           release.authorUsername,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: colours.tertiaryLight, fontSize: textXS),
+                          style: TextStyle(color: context.colours.tertiaryLight, fontSize: textXS),
                         ),
                       ),
                     ],
                     Text(
                       ' $bullet ',
-                      style: TextStyle(color: colours.tertiaryLight, fontSize: textXS),
+                      style: TextStyle(color: context.colours.tertiaryLight, fontSize: textXS),
                     ),
                     Text(
                       relativeTime,
-                      style: TextStyle(color: colours.tertiaryLight, fontSize: textXS),
+                      style: TextStyle(color: context.colours.tertiaryLight, fontSize: textXS),
                     ),
                   ],
                 ),
@@ -336,22 +337,22 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: spaceXXS, vertical: spaceXXXXS),
                           decoration: BoxDecoration(
-                            color: colours.tertiaryWarning.withValues(alpha: 0.2),
+                            color: context.colours.tertiaryWarning.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.all(cornerRadiusXS),
                           ),
                           child: Text(
-                            t.preRelease,
-                            style: TextStyle(color: colours.tertiaryWarning, fontSize: textXXS, fontWeight: FontWeight.bold),
+                            context.t.preRelease,
+                            style: TextStyle(color: context.colours.tertiaryWarning, fontSize: textXXS, fontWeight: FontWeight.bold),
                           ),
                         ),
                       if (release.isPrerelease && release.isDraft) SizedBox(width: spaceXXXS),
                       if (release.isDraft)
                         Container(
                           padding: EdgeInsets.symmetric(horizontal: spaceXXS, vertical: spaceXXXXS),
-                          decoration: BoxDecoration(color: colours.tertiaryDark, borderRadius: BorderRadius.all(cornerRadiusXS)),
+                          decoration: BoxDecoration(color: context.colours.tertiaryDark, borderRadius: BorderRadius.all(cornerRadiusXS)),
                           child: Text(
-                            t.draft,
-                            style: TextStyle(color: colours.secondaryLight, fontSize: textXXS, fontWeight: FontWeight.bold),
+                            context.t.draft,
+                            style: TextStyle(color: context.colours.secondaryLight, fontSize: textXXS, fontWeight: FontWeight.bold),
                           ),
                         ),
                     ],
@@ -367,7 +368,7 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
                 if (release.description.isNotEmpty)
                   Padding(
                     padding: EdgeInsets.only(left: textMD + spaceXS),
-                    child: MarkdownBlock(data: release.description, config: buildMarkdownConfig(), generator: buildMarkdownGenerator()),
+                    child: MarkdownBlock(data: release.description, config: buildMarkdownConfig(context), generator: buildMarkdownGenerator()),
                   ),
 
                 // Commit SHA
@@ -382,11 +383,11 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
                       },
                       child: Row(
                         children: [
-                          FaIcon(FontAwesomeIcons.codeBranch, size: textXS, color: colours.tertiaryLight),
+                          FaIcon(FontAwesomeIcons.codeBranch, size: textXS, color: context.colours.tertiaryLight),
                           SizedBox(width: spaceXXXS),
                           Text(
                             release.commitSha!.length >= 7 ? release.commitSha!.substring(0, 7) : release.commitSha!,
-                            style: TextStyle(color: colours.tertiaryLight, fontSize: textXS, fontFamily: 'RobotoMono'),
+                            style: TextStyle(color: context.colours.tertiaryLight, fontSize: textXS, fontFamily: 'RobotoMono'),
                           ),
                         ],
                       ),
@@ -399,8 +400,8 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
                 Padding(
                   padding: EdgeInsets.only(left: textMD + spaceXS),
                   child: Text(
-                    t.releaseAssets.toUpperCase(),
-                    style: TextStyle(color: colours.secondaryLight, fontSize: textXXS, fontWeight: FontWeight.bold),
+                    context.t.releaseAssets.toUpperCase(),
+                    style: TextStyle(color: context.colours.secondaryLight, fontSize: textXXS, fontWeight: FontWeight.bold),
                   ),
                 ),
                 SizedBox(height: spaceXXXS),
@@ -408,8 +409,8 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
                   Padding(
                     padding: EdgeInsets.only(left: textMD + spaceXS),
                     child: Text(
-                      t.noAssets,
-                      style: TextStyle(color: colours.tertiaryLight, fontSize: textXS),
+                      context.t.noAssets,
+                      style: TextStyle(color: context.colours.tertiaryLight, fontSize: textXS),
                     ),
                   )
                 else
@@ -420,32 +421,32 @@ class _ItemReleaseState extends State<_ItemRelease> with SingleTickerProviderSta
                         onTap: () => _downloadAsset(asset),
                         child: Container(
                           padding: EdgeInsets.symmetric(horizontal: spaceXS, vertical: spaceXXS),
-                          decoration: BoxDecoration(color: colours.tertiaryDark, borderRadius: BorderRadius.all(cornerRadiusXS)),
+                          decoration: BoxDecoration(color: context.colours.tertiaryDark, borderRadius: BorderRadius.all(cornerRadiusXS)),
                           child: Row(
                             children: [
-                              FaIcon(FontAwesomeIcons.download, size: textXXS, color: colours.tertiaryInfo),
+                              FaIcon(FontAwesomeIcons.download, size: textXXS, color: context.colours.tertiaryInfo),
                               SizedBox(width: spaceXXS),
                               Expanded(
                                 child: Text(
                                   asset.name,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: colours.primaryLight, fontSize: textXS),
+                                  style: TextStyle(color: context.colours.primaryLight, fontSize: textXS),
                                 ),
                               ),
                               if (asset.size != null) ...[
                                 SizedBox(width: spaceXXS),
                                 Text(
                                   formatBytes(asset.size),
-                                  style: TextStyle(color: colours.tertiaryLight, fontSize: textXXS),
+                                  style: TextStyle(color: context.colours.tertiaryLight, fontSize: textXXS),
                                 ),
                               ],
                               if (asset.downloadCount != null) ...[
                                 SizedBox(width: spaceXXS),
-                                FaIcon(FontAwesomeIcons.arrowDown, size: textXXS, color: colours.tertiaryLight),
+                                FaIcon(FontAwesomeIcons.arrowDown, size: textXXS, color: context.colours.tertiaryLight),
                                 SizedBox(width: spaceXXXXS),
                                 Text(
                                   '${asset.downloadCount}',
-                                  style: TextStyle(color: colours.tertiaryLight, fontSize: textXXS),
+                                  style: TextStyle(color: context.colours.tertiaryLight, fontSize: textXXS),
                                 ),
                               ],
                             ],

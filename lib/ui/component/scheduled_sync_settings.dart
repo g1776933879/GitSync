@@ -108,17 +108,17 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
   String _presetLabel(String key) {
     switch (key) {
       case 'interval30min':
-        return t.interval30min;
+        return context.t.interval30min;
       case 'interval1hour':
-        return t.interval1hour;
+        return context.t.interval1hour;
       case 'interval6hours':
-        return t.interval6hours;
+        return context.t.interval6hours;
       case 'interval12hours':
-        return t.interval12hours;
+        return context.t.interval12hours;
       case 'interval1day':
-        return t.interval1day;
+        return context.t.interval1day;
       case 'interval1week':
-        return t.interval1week;
+        return context.t.interval1week;
       default:
         return key;
     }
@@ -127,13 +127,13 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
   String _frequencyLabel(String freq) {
     switch (freq) {
       case 'min':
-        return t.minutes;
+        return context.t.minutes;
       case 'hour':
-        return t.hours;
+        return context.t.hours;
       case 'day':
-        return t.days;
+        return context.t.days;
       case 'week':
-        return t.weeks;
+        return context.t.weeks;
       default:
         return freq;
     }
@@ -166,7 +166,7 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           padding: WidgetStatePropertyAll(EdgeInsets.only(left: spaceMD, top: spaceXS, bottom: spaceXS, right: spaceXS)),
           shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(cornerRadiusMD), side: BorderSide.none)),
-          backgroundColor: WidgetStatePropertyAll(colours.tertiaryDark),
+          backgroundColor: WidgetStatePropertyAll(context.colours.tertiaryDark),
         ),
         icon: Container(
           margin: EdgeInsets.symmetric(horizontal: spaceSM, vertical: spaceXXS),
@@ -186,17 +186,17 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
                 }
               },
               padding: EdgeInsets.zero,
-              thumbColor: WidgetStatePropertyAll(isEnabled ? colours.primaryPositive : colours.tertiaryDark),
+              thumbColor: WidgetStatePropertyAll(isEnabled ? context.colours.primaryPositive : context.colours.tertiaryDark),
               trackOutlineColor: WidgetStatePropertyAll(Colors.transparent),
-              activeThumbColor: colours.primaryPositive,
-              inactiveTrackColor: colours.tertiaryLight,
+              activeThumbColor: context.colours.primaryPositive,
+              inactiveTrackColor: context.colours.tertiaryLight,
               materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
           ),
         ),
         label: Text(
-          t.scheduledSync,
-          style: TextStyle(color: colours.primaryLight, fontSize: textMD),
+          context.t.scheduledSync,
+          style: TextStyle(color: context.colours.primaryLight, fontSize: textMD),
         ),
       ),
     );
@@ -208,12 +208,19 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
       child: AnimatedContainer(
         duration: animFast,
         padding: EdgeInsets.symmetric(horizontal: spaceMD, vertical: spaceXS),
-        decoration: BoxDecoration(color: selected ? colours.tertiaryInfo : colours.tertiaryDark, borderRadius: BorderRadius.all(cornerRadiusSM)),
+        decoration: BoxDecoration(
+          color: selected ? context.colours.tertiaryInfo : context.colours.tertiaryDark,
+          borderRadius: BorderRadius.all(cornerRadiusSM),
+        ),
         child: Center(
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: TextStyle(color: selected ? colours.primaryDark : colours.primaryLight, fontSize: textSM, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: selected ? context.colours.primaryDark : context.colours.primaryLight,
+              fontSize: textSM,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
       ),
@@ -234,15 +241,15 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
             spacing: spaceSM,
             children: [
               Text(
-                "${t.every} $rate $frequency".toUpperCase(),
-                style: TextStyle(fontSize: textMD, color: colours.tertiaryLight, fontWeight: FontWeight.bold),
+                "${context.t.every} $rate $frequency".toUpperCase(),
+                style: TextStyle(fontSize: textMD, color: context.colours.tertiaryLight, fontWeight: FontWeight.bold),
               ),
               ValueListenableBuilder(
                 valueListenable: updating,
                 builder: (context, updatingValue, child) => updatingValue
                     ? SizedBox.square(
                         dimension: textSM,
-                        child: CircularProgressIndicator(color: colours.tertiaryLight),
+                        child: CircularProgressIndicator(color: context.colours.tertiaryLight),
                       )
                     : SizedBox.shrink(),
               ),
@@ -293,7 +300,7 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
                     AnimatedSize(duration: animFast, child: isCustomSelected ? _buildCustomInputs(frequency, rate) : SizedBox.shrink()),
                     Expanded(
                       child: _buildChip(
-                        isCustomSelected ? t.confirm : t.custom,
+                        isCustomSelected ? context.t.confirm : context.t.custom,
                         isCustomSelected,
                         isCustomSelected
                             ? () async {
@@ -345,9 +352,9 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
             duration: animFast,
             width: spaceXL,
             decoration: BoxDecoration(
-              color: colours.tertiaryDark,
+              color: context.colours.tertiaryDark,
               borderRadius: BorderRadius.all(cornerRadiusSM),
-              border: Border.all(color: _customError ? colours.tertiaryNegative : Colors.transparent, width: 1.5),
+              border: Border.all(color: _customError ? context.colours.tertiaryNegative : Colors.transparent, width: 1.5),
             ),
             child: TextField(
               key: _customRateKey,
@@ -357,7 +364,7 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
               controller: TextEditingController(text: customRate.toString()),
               keyboardType: TextInputType.number,
               style: TextStyle(
-                color: _customError ? colours.tertiaryNegative : colours.primaryLight,
+                color: _customError ? context.colours.tertiaryNegative : context.colours.primaryLight,
                 fontWeight: FontWeight.bold,
                 decoration: TextDecoration.none,
                 decorationThickness: 0,
@@ -383,7 +390,7 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
           ),
           SizedBox(width: spaceXS),
           Container(
-            decoration: BoxDecoration(color: colours.tertiaryDark, borderRadius: BorderRadius.all(cornerRadiusSM)),
+            decoration: BoxDecoration(color: context.colours.tertiaryDark, borderRadius: BorderRadius.all(cornerRadiusSM)),
             child: DropdownButton(
               isDense: true,
               padding: EdgeInsets.symmetric(vertical: spaceXXS, horizontal: spaceXS),
@@ -391,7 +398,7 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
               menuMaxHeight: 250,
               borderRadius: BorderRadius.all(cornerRadiusSM),
               underline: const SizedBox.shrink(),
-              dropdownColor: colours.primaryDark,
+              dropdownColor: context.colours.primaryDark,
               onChanged: (value) {
                 if (value != null) {
                   setState(() {
@@ -406,7 +413,7 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
                   value: item,
                   child: Text(
                     _frequencyLabel(item),
-                    style: TextStyle(fontSize: textSM, color: colours.primaryLight, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: textSM, color: context.colours.primaryLight, fontWeight: FontWeight.bold),
                   ),
                 );
               }).toList(),
@@ -416,14 +423,14 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
           // IconButton(
           //   padding: EdgeInsets.all(spaceXS),
           //   style: ButtonStyle(
-          //     backgroundColor: WidgetStatePropertyAll(colours.tertiaryInfo),
+          //     backgroundColor: WidgetStatePropertyAll(context.colours.tertiaryInfo),
           //     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           //     shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.all(cornerRadiusSM))),
           //   ),
           //   constraints: BoxConstraints(),
           //   onPressed: () async {
           //   },
-          //   icon: FaIcon(FontAwesomeIcons.check, color: colours.primaryDark, size: textMD),
+          //   icon: FaIcon(FontAwesomeIcons.check, color: context.colours.primaryDark, size: textMD),
           // ),
         ],
       ),
@@ -455,8 +462,8 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
                                 ? EdgeInsets.only(bottom: spaceSM)
                                 : EdgeInsets.only(left: spaceLG + spaceXS, right: spaceMD + spaceXS, bottom: spaceSM),
                             child: Text(
-                              t.iosDefaultSyncRate.toUpperCase(),
-                              style: TextStyle(fontSize: textMD, color: colours.tertiaryLight, fontWeight: FontWeight.bold),
+                              context.t.iosDefaultSyncRate.toUpperCase(),
+                              style: TextStyle(fontSize: textMD, color: context.colours.tertiaryLight, fontWeight: FontWeight.bold),
                             ),
                           )
                         : Padding(
@@ -478,7 +485,7 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
     }
 
     return Container(
-      decoration: BoxDecoration(color: colours.secondaryDark, borderRadius: BorderRadius.all(cornerRadiusMD)),
+      decoration: BoxDecoration(color: context.colours.secondaryDark, borderRadius: BorderRadius.all(cornerRadiusMD)),
       child: FutureBuilder(
         future: uiSettingsManager.getBool(StorageKey.setman_scheduledSyncSettingsExpanded),
         builder: (context, snapshot) => Column(
@@ -500,7 +507,7 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
                   ),
                   icon: FaIcon(
                     (snapshot.data ?? false) ? FontAwesomeIcons.chevronUp : FontAwesomeIcons.chevronDown,
-                    color: colours.primaryLight,
+                    color: context.colours.primaryLight,
                     size: textXL,
                   ),
                   label: SizedBox(
@@ -516,12 +523,12 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                t.scheduledSyncSettings,
+                                context.t.scheduledSyncSettings,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontFeatures: [FontFeature.enable('smcp')],
-                                  color: colours.primaryLight,
+                                  color: context.colours.primaryLight,
                                   fontSize: textLG,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -529,8 +536,8 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
                               if (snapshot.data == true) ...[
                                 SizedBox(height: spaceXXXXS),
                                 Text(
-                                  t.scheduledSyncDescription,
-                                  style: TextStyle(color: colours.secondaryLight, fontSize: textMD),
+                                  context.t.scheduledSyncDescription,
+                                  style: TextStyle(color: context.colours.secondaryLight, fontSize: textMD),
                                 ),
                               ],
                             ],
@@ -560,7 +567,7 @@ class _ScheduledSyncSettingsState extends State<ScheduledSyncSettings> with Widg
                             onPressed: () async {
                               launchUrl(Uri.parse(scheduledSyncDocsLink));
                             },
-                            icon: FaIcon(FontAwesomeIcons.circleQuestion, color: colours.primaryLight, size: textLG),
+                            icon: FaIcon(FontAwesomeIcons.circleQuestion, color: context.colours.primaryLight, size: textLG),
                           ),
                         )
                       : SizedBox.shrink(),

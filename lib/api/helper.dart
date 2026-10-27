@@ -90,14 +90,16 @@ Future<bool> requestStoragePerm([bool request = true]) async {
 
 Widget getBackButton(BuildContext context, Function() onPressed) => IconButton(
   onPressed: onPressed,
-  icon: FaIcon(FontAwesomeIcons.arrowLeft, color: colours.primaryLight, size: textLG, semanticLabel: t.backLabel),
+  icon: FaIcon(FontAwesomeIcons.arrowLeft, color: context.colours.primaryLight, size: textLG, semanticLabel: context.t.backLabel),
 );
 
 Widget getOpenInBrowserButton(String? url) => url == null
     ? const SizedBox.shrink()
     : IconButton(
         onPressed: () => launchUrl(Uri.parse(url)),
-        icon: FaIcon(FontAwesomeIcons.arrowUpRightFromSquare, color: colours.primaryLight, size: textMD, semanticLabel: t.launchInBrowser),
+        icon: Builder(
+          builder: (context) => FaIcon(FontAwesomeIcons.arrowUpRightFromSquare, color: context.colours.primaryLight, size: textMD, semanticLabel: context.t.launchInBrowser),
+        ),
       );
 
 void debounce(String index, int milliseconds, VoidCallback callback) {
@@ -122,6 +124,7 @@ String formatBytes(int? bytes, [int precision = 2]) {
 }
 
 Future<void> openLogViewer(BuildContext context, {List<(String, String)>? deviceInfoEntries}) async {
+  final t = context.t;
   final Directory dir = await getTemporaryDirectory();
   final logsDir = Directory("${dir.path}/logs");
 
@@ -293,7 +296,7 @@ TextSelectionToolbar globalContextMenuBuilder(BuildContext context, EditableText
   toolbarBuilder: (context, child) => Material(
     borderRadius: const BorderRadius.all(cornerRadiusMax),
     clipBehavior: Clip.antiAlias,
-    color: colours.primaryDark,
+    color: context.colours.primaryDark,
     elevation: 1.0,
     type: MaterialType.card,
     child: child,
@@ -305,7 +308,7 @@ TextSelectionToolbar globalContextMenuBuilder(BuildContext context, EditableText
       onPressed: indexedButtonItem.$2.onPressed,
       child: Text(
         AdaptiveTextSelectionToolbar.getButtonLabel(context, indexedButtonItem.$2),
-        style: TextStyle(fontSize: textMD, color: colours.primaryLight, fontWeight: FontWeight.w500),
+        style: TextStyle(fontSize: textMD, color: context.colours.primaryLight, fontWeight: FontWeight.w500),
       ),
     );
   }).toList(),
@@ -408,6 +411,7 @@ Future<void> _performRemoteRepoCreation(
   (GitProvider, String, String, bool) oAuthInfo,
   String? dirPath,
 ) async {
+  final t = context.t;
   Fluttertoast.showToast(msg: t.creatingRemoteRepo);
 
   final manager = GitProviderManager.getGitProviderManager(oAuthInfo.$1, oAuthInfo.$4);
