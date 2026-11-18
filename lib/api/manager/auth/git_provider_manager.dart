@@ -55,6 +55,12 @@ class GitProviderManager {
     };
   }
 
+  bool get supportsMostCommentedIssueSort => true;
+  bool get supportsReviewerFilter => true;
+  bool get supportsPrLabelFilter => true;
+  bool get supportsPrAssigneeFilter => true;
+  bool get supportsPrMilestoneFilter => true;
+
   String get clientId => "";
   String? get clientSecret => null;
   List<String>? get scopes => null;
@@ -133,8 +139,9 @@ class GitProviderManager {
     String? milestoneFilter,
     String? projectFilter,
     Function(List<Issue>) updateCallback,
-    Function(Function()?) nextPageCallback,
-  ) async {}
+    Function(Function()?) nextPageCallback, {
+    void Function()? onError,
+  }) async {}
 
   Future<List<Milestone>> getMilestones(String accessToken, String owner, String repo) async {
     return [];
@@ -165,24 +172,27 @@ class GitProviderManager {
     String? reviewerFilter,
     String? milestoneFilter,
     Function(List<PullRequest>) updateCallback,
-    Function(Function()?) nextPageCallback,
-  ) async {}
+    Function(Function()?) nextPageCallback, {
+    void Function()? onError,
+  }) async {}
 
   Future<void> getTags(
     String accessToken,
     String owner,
     String repo,
     Function(List<Tag>) updateCallback,
-    Function(Function()?) nextPageCallback,
-  ) async {}
+    Function(Function()?) nextPageCallback, {
+    void Function()? onError,
+  }) async {}
 
   Future<void> getReleases(
     String accessToken,
     String owner,
     String repo,
     Function(List<Release>) updateCallback,
-    Function(Function()?) nextPageCallback,
-  ) async {}
+    Function(Function()?) nextPageCallback, {
+    void Function()? onError,
+  }) async {}
 
   Future<void> getActionRuns(
     String accessToken,
@@ -190,8 +200,9 @@ class GitProviderManager {
     String repo,
     String state,
     Function(List<ActionRun>) updateCallback,
-    Function(Function()?) nextPageCallback,
-  ) async {}
+    Function(Function()?) nextPageCallback, {
+    void Function()? onError,
+  }) async {}
 
   Future<IssueDetail?> getIssueDetail(String accessToken, String owner, String repo, int issueNumber) async {
     return null;

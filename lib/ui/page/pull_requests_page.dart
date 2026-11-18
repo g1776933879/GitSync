@@ -7,6 +7,7 @@ import 'package:GitSync/api/manager/auth/git_provider_manager.dart';
 import 'package:GitSync/constant/dimens.dart';
 import 'package:GitSync/constant/strings.dart';
 import 'package:GitSync/global.dart';
+import 'package:GitSync/ui/component/fetch_error_state.dart';
 import 'package:GitSync/type/git_provider.dart';
 import 'package:GitSync/type/issue.dart';
 import 'package:GitSync/type/pull_request.dart';
@@ -31,6 +32,7 @@ class _PullRequestsPageState extends State<PullRequestsPage> {
   final ScrollController _scrollController = ScrollController();
   final List<PullRequest> _pullRequests = [];
   bool _loading = true;
+  bool _error = false;
   Function()? _loadNextPage;
   String _stateFilter = "open";
   int _fetchGeneration = 0;
@@ -52,10 +54,19 @@ class _PullRequestsPageState extends State<PullRequestsPage> {
   List<String>? _repoLabels;
   List<String>? _repoCollaborators;
   List<String>? _repoMilestones;
+  bool _supportsReviewerFilter = true;
+  bool _supportsLabelFilter = true;
+  bool _supportsAssigneeFilter = true;
+  bool _supportsMilestoneFilter = true;
 
   @override
   void initState() {
     super.initState();
+    final manager = GitProviderManager.getGitProviderManager(widget.gitProvider, widget.githubAppOauth);
+    _supportsReviewerFilter = manager?.supportsReviewerFilter ?? true;
+    _supportsLabelFilter = manager?.supportsPrLabelFilter ?? true;
+    _supportsAssigneeFilter = manager?.supportsPrAssigneeFilter ?? true;
+    _supportsMilestoneFilter = manager?.supportsPrMilestoneFilter ?? true;
     _scrollController.addListener(_onScroll);
     _fetchPullRequests();
   }
@@ -95,6 +106,7 @@ class _PullRequestsPageState extends State<PullRequestsPage> {
     setState(() {
       _pullRequests.clear();
       _loading = true;
+      _error = false;
       _loadNextPage = null;
     });
 
@@ -139,6 +151,13 @@ class _PullRequestsPageState extends State<PullRequestsPage> {
             }
           });
         }
+      },
+      onError: () {
+        if (!mounted || generation != _fetchGeneration) return;
+        setState(() {
+          _error = true;
+          _loading = false;
+        });
       },
     );
   }
@@ -351,32 +370,40 @@ class _PullRequestsPageState extends State<PullRequestsPage> {
                     _ensureCollaborators,
                     _repoCollaborators,
                   ),
-                  SizedBox(height: spaceSM),
-                  _buildAutocompleteField(_labelsController, _labelsFocusNode, context.t.filterLabels.toUpperCase(), _ensureLabels, _repoLabels),
-                  SizedBox(height: spaceSM),
-                  _buildAutocompleteField(
-                    _assigneeController,
-                    _assigneeFocusNode,
-                    context.t.filterAssignee.toUpperCase(),
-                    _ensureCollaborators,
-                    _repoCollaborators,
-                  ),
-                  SizedBox(height: spaceSM),
-                  _buildAutocompleteField(
-                    _reviewerController,
-                    _reviewerFocusNode,
-                    context.t.filterReviewer.toUpperCase(),
-                    _ensureCollaborators,
-                    _repoCollaborators,
-                  ),
-                  SizedBox(height: spaceSM),
-                  _buildAutocompleteField(
-                    _milestoneController,
-                    _milestoneFocusNode,
-                    context.t.filterMilestone.toUpperCase(),
-                    _ensureMilestones,
-                    _repoMilestones,
-                  ),
+                  if (_supportsLabelFilter) ...[
+                    SizedBox(height: spaceSM),
+                    _buildAutocompleteField(_labelsController, _labelsFocusNode, context.t.filterLabels.toUpperCase(), _ensureLabels, _repoLabels),
+                  ],
+                  if (_supportsAssigneeFilter) ...[
+                    SizedBox(height: spaceSM),
+                    _buildAutocompleteField(
+                      _assigneeController,
+                      _assigneeFocusNode,
+                      context.t.filterAssignee.toUpperCase(),
+                      _ensureCollaborators,
+                      _repoCollaborators,
+                    ),
+                  ],
+                  if (_supportsReviewerFilter) ...[
+                    SizedBox(height: spaceSM),
+                    _buildAutocompleteField(
+                      _reviewerController,
+                      _reviewerFocusNode,
+                      context.t.filterReviewer.toUpperCase(),
+                      _ensureCollaborators,
+                      _repoCollaborators,
+                    ),
+                  ],
+                  if (_supportsMilestoneFilter) ...[
+                    SizedBox(height: spaceSM),
+                    _buildAutocompleteField(
+                      _milestoneController,
+                      _milestoneFocusNode,
+                      context.t.filterMilestone.toUpperCase(),
+                      _ensureMilestones,
+                      _repoMilestones,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -558,10 +585,12 @@ class _PullRequestsPageState extends State<PullRequestsPage> {
                           child: SizedBox(
                             height: constraints.maxHeight,
                             child: Center(
-                              child: Text(
-                                context.t.pullRequestsNotFound.toUpperCase(),
-                                style: TextStyle(color: context.colours.secondaryLight, fontWeight: FontWeight.bold, fontSize: textLG),
-                              ),
+                              child: _error
+                                  ? FetchErrorState(onRetry: _fetchPullRequests)
+                                  : Text(
+                                      context.t.pullRequestsNotFound.toUpperCase(),
+                                      style: TextStyle(color: context.colours.secondaryLight, fontWeight: FontWeight.bold, fontSize: textLG),
+                                    ),
                             ),
                           ),
                         ),

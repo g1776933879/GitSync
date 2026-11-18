@@ -13,15 +13,23 @@ import 'package:GitSync/type/showcase_feature.dart';
 import 'package:GitSync/api/manager/auth/git_provider_manager.dart';
 
 abstract class SettingNotifier<T> extends AsyncNotifier<T> {
-  Future<T> read();
-  Future<void> write(T value);
+  Future<T> read(SettingsManager manager);
+  Future<void> write(SettingsManager manager, T value);
+
+  SettingsManager? _scopedManager;
+
+  SettingsManager get manager => _scopedManager ?? uiSettingsManager;
 
   @override
-  Future<T> build() => read();
+  Future<T> build() async {
+    final manager = await SettingsManager.scoped(await repoManager.getInt(StorageKey.repoman_repoIndex));
+    _scopedManager = manager;
+    return read(manager);
+  }
 
   void set(T value) {
     state = AsyncData(value);
-    write(value);
+    write(manager, value);
   }
 }
 
@@ -32,31 +40,42 @@ abstract class CachedGitNotifier<T> extends AsyncNotifier<T> {
 
   SettingsManager? _scopedManager;
 
+  bool cacheOnly = false;
+
   Future<bool> _isCurrentIndex(int buildIndex) async => await repoManager.getInt(StorageKey.repoman_repoIndex) == buildIndex;
+
+  Future<SettingsManager> _scope() async {
+    final manager = await SettingsManager.scoped(await repoManager.getInt(StorageKey.repoman_repoIndex));
+    _scopedManager = manager;
+    return manager;
+  }
 
   @override
   Future<T> build() async {
+    if (cacheOnly) return readCache(await _scope());
+
     var cancelled = false;
     ref.onDispose(() => cancelled = true);
+
+    final repoIndex = await repoManager.getInt(StorageKey.repoman_repoIndex);
+    final manager = await SettingsManager.scoped(repoIndex);
+    _scopedManager = manager;
 
     bool cacheValid = true;
     late T cached;
     try {
-      cached = await readCache(uiSettingsManager);
+      cached = await readCache(manager);
     } catch (e, s) {
       cacheValid = false;
       Logger.logError(LogType.Global, e, s);
     }
 
     if (cacheValid) {
-      final repoIndex = await repoManager.getInt(StorageKey.repoman_repoIndex);
       final hasCache = cached != null && (cached is! List || cached.isNotEmpty) && (cached is! Map || cached.isNotEmpty);
       if (hasCache) {
         state = AsyncData(cached);
         () async {
           try {
-            final manager = await SettingsManager.scoped(repoIndex);
-            _scopedManager = manager;
             final live = await fetchLive();
             if (!cancelled && await _isCurrentIndex(repoIndex)) {
               state = AsyncData(live);
@@ -75,10 +94,6 @@ abstract class CachedGitNotifier<T> extends AsyncNotifier<T> {
       }
     }
 
-    final repoIndex = await repoManager.getInt(StorageKey.repoman_repoIndex);
-    final manager = await SettingsManager.scoped(repoIndex);
-    _scopedManager = manager;
-
     final live = await fetchLive();
     if (!cancelled && await _isCurrentIndex(repoIndex)) {
       await writeCache(manager, live);
@@ -92,6 +107,12 @@ abstract class CachedGitNotifier<T> extends AsyncNotifier<T> {
   }
 
   Future<T?> refresh() async {
+    if (cacheOnly) {
+      final cached = await readCache(await _scope());
+      state = AsyncData(cached);
+      return cached;
+    }
+
     final repoIndex = await repoManager.getInt(StorageKey.repoman_repoIndex);
     final manager = await SettingsManager.scoped(repoIndex);
     _scopedManager = manager;
@@ -309,6 +330,8 @@ class RecentCommitsNotifier extends CachedGitNotifier<List<GitManagerRs.Commit>>
     final manager = await SettingsManager.scoped(repoIndex);
     _scopedManager = manager;
 
+    if (cacheOnly) return readCache(manager);
+
     var cancelled = false;
     ref.onDispose(() {
       cancelled = true;
@@ -320,11 +343,16 @@ class RecentCommitsNotifier extends CachedGitNotifier<List<GitManagerRs.Commit>>
     final cached = await readCache(manager);
 
     if (cached.isEmpty) {
-      ref.read(isLoadingCommitsProvider.notifier).state = true;
-      final live = await fetchLive();
-      await writeCache(manager, live);
-      ref.read(isLoadingCommitsProvider.notifier).state = false;
-      return live;
+      try {
+        ref.read(isLoadingCommitsProvider.notifier).state = true;
+        final live = await fetchLive();
+        await writeCache(manager, live);
+        return live;
+      } on OperationNotExecuted {
+        return cached;
+      } finally {
+        if (!cancelled) ref.read(isLoadingCommitsProvider.notifier).state = false;
+      }
     }
 
     () async {
@@ -352,20 +380,24 @@ class RecentCommitsNotifier extends CachedGitNotifier<List<GitManagerRs.Commit>>
   }
 
   Future<void> loadMore() async {
-    if (!_hasMoreCommits || ref.read(isLoadingCommitsProvider)) return;
+    if (cacheOnly || !_hasMoreCommits || ref.read(isLoadingCommitsProvider)) return;
     final repoIndex = await repoManager.getInt(StorageKey.repoman_repoIndex);
     final manager = await SettingsManager.scoped(repoIndex);
     final current = state.valueOrNull ?? [];
     ref.read(isLoadingCommitsProvider.notifier).state = true;
-    final moreCommits = await GitManager.getMoreRecentCommits(current.length);
-    if (moreCommits.isEmpty) {
-      _hasMoreCommits = false;
-    } else if (await _isCurrentIndex(repoIndex)) {
-      final updated = [...current, ...moreCommits];
-      state = AsyncData(updated);
-      await writeCache(manager, updated);
+    try {
+      final moreCommits = await GitManager.getMoreRecentCommits(current.length);
+      if (moreCommits == null) return;
+      if (moreCommits.isEmpty) {
+        _hasMoreCommits = false;
+      } else if (await _isCurrentIndex(repoIndex)) {
+        final updated = [...current, ...moreCommits];
+        state = AsyncData(updated);
+        await writeCache(manager, updated);
+      }
+    } finally {
+      ref.read(isLoadingCommitsProvider.notifier).state = false;
     }
-    ref.read(isLoadingCommitsProvider.notifier).state = false;
   }
 }
 
@@ -396,53 +428,53 @@ final recommendedActionProvider = AsyncNotifierProvider<RecommendedActionNotifie
 
 class SyncMessageEnabledNotifier extends SettingNotifier<bool> {
   @override
-  Future<bool> read() => uiSettingsManager.getBool(StorageKey.setman_syncMessageEnabled);
+  Future<bool> read(SettingsManager manager) => manager.getBool(StorageKey.setman_syncMessageEnabled);
 
   @override
-  Future<void> write(bool value) => uiSettingsManager.setBool(StorageKey.setman_syncMessageEnabled, value);
+  Future<void> write(SettingsManager manager, bool value) => manager.setBool(StorageKey.setman_syncMessageEnabled, value);
 }
 
 final syncMessageEnabledProvider = AsyncNotifierProvider<SyncMessageEnabledNotifier, bool>(SyncMessageEnabledNotifier.new);
 
 class LastSyncMethodNotifier extends SettingNotifier<String> {
   @override
-  Future<String> read() => uiSettingsManager.getString(StorageKey.setman_lastSyncMethod);
+  Future<String> read(SettingsManager manager) => manager.getString(StorageKey.setman_lastSyncMethod);
 
   @override
-  Future<void> write(String value) => uiSettingsManager.setString(StorageKey.setman_lastSyncMethod, value);
+  Future<void> write(SettingsManager manager, String value) => manager.setString(StorageKey.setman_lastSyncMethod, value);
 }
 
 final lastSyncMethodProvider = AsyncNotifierProvider<LastSyncMethodNotifier, String>(LastSyncMethodNotifier.new);
 
 class ClientModeEnabledNotifier extends SettingNotifier<bool> {
   @override
-  Future<bool> read() => uiSettingsManager.getClientModeEnabled();
+  Future<bool> read(SettingsManager manager) => manager.getClientModeEnabled();
 
   @override
-  Future<void> write(bool value) => uiSettingsManager.setBoolNullable(StorageKey.setman_clientModeEnabled, value);
+  Future<void> write(SettingsManager manager, bool value) => manager.setBoolNullable(StorageKey.setman_clientModeEnabled, value);
 }
 
 final clientModeEnabledProvider = AsyncNotifierProvider<ClientModeEnabledNotifier, bool>(ClientModeEnabledNotifier.new);
 
 class GitProviderNotifier extends SettingNotifier<GitProvider> {
   @override
-  Future<GitProvider> read() => uiSettingsManager.getGitProvider();
+  Future<GitProvider> read(SettingsManager manager) => manager.getGitProvider();
 
   @override
-  Future<void> write(GitProvider value) => uiSettingsManager.setStringNullable(StorageKey.setman_gitProvider, value.name);
+  Future<void> write(SettingsManager manager, GitProvider value) => manager.setStringNullable(StorageKey.setman_gitProvider, value.name);
 }
 
 final gitProviderProvider = AsyncNotifierProvider<GitProviderNotifier, GitProvider>(GitProviderNotifier.new);
 
 class PostFooterNotifier extends SettingNotifier<String> {
   @override
-  Future<String> read() => uiSettingsManager.getPostFooter();
+  Future<String> read(SettingsManager manager) => manager.getPostFooter();
 
   @override
-  Future<void> write(String value) => uiSettingsManager.setStringNullable(StorageKey.setman_postFooter, value);
+  Future<void> write(SettingsManager manager, String value) => manager.setStringNullable(StorageKey.setman_postFooter, value);
 
   void clear() {
-    uiSettingsManager.setStringNullable(StorageKey.setman_postFooter, null);
+    manager.setStringNullable(StorageKey.setman_postFooter, null);
     ref.invalidateSelf();
   }
 }
@@ -451,13 +483,13 @@ final postFooterProvider = AsyncNotifierProvider<PostFooterNotifier, String>(Pos
 
 class AuthorNameNotifier extends SettingNotifier<String> {
   @override
-  Future<String> read() => uiSettingsManager.getAuthorName();
+  Future<String> read(SettingsManager manager) => manager.getAuthorName();
 
   @override
-  Future<void> write(String value) => uiSettingsManager.setStringNullable(StorageKey.setman_authorName, value);
+  Future<void> write(SettingsManager manager, String value) => manager.setStringNullable(StorageKey.setman_authorName, value);
 
   void clear() {
-    uiSettingsManager.setStringNullable(StorageKey.setman_authorName, null);
+    manager.setStringNullable(StorageKey.setman_authorName, null);
     ref.invalidateSelf();
   }
 }
@@ -466,13 +498,13 @@ final authorNameProvider = AsyncNotifierProvider<AuthorNameNotifier, String>(Aut
 
 class AuthorEmailNotifier extends SettingNotifier<String> {
   @override
-  Future<String> read() => uiSettingsManager.getAuthorEmail();
+  Future<String> read(SettingsManager manager) => manager.getAuthorEmail();
 
   @override
-  Future<void> write(String value) => uiSettingsManager.setStringNullable(StorageKey.setman_authorEmail, value);
+  Future<void> write(SettingsManager manager, String value) => manager.setStringNullable(StorageKey.setman_authorEmail, value);
 
   void clear() {
-    uiSettingsManager.setStringNullable(StorageKey.setman_authorEmail, null);
+    manager.setStringNullable(StorageKey.setman_authorEmail, null);
     ref.invalidateSelf();
   }
 }
@@ -481,13 +513,13 @@ final authorEmailProvider = AsyncNotifierProvider<AuthorEmailNotifier, String>(A
 
 class SyncMessageNotifier extends SettingNotifier<String> {
   @override
-  Future<String> read() => uiSettingsManager.getSyncMessage();
+  Future<String> read(SettingsManager manager) => manager.getSyncMessage();
 
   @override
-  Future<void> write(String value) => uiSettingsManager.setStringNullable(StorageKey.setman_syncMessage, value);
+  Future<void> write(SettingsManager manager, String value) => manager.setStringNullable(StorageKey.setman_syncMessage, value);
 
   void clear() {
-    uiSettingsManager.setStringNullable(StorageKey.setman_syncMessage, null);
+    manager.setStringNullable(StorageKey.setman_syncMessage, null);
     ref.invalidateSelf();
   }
 }
@@ -496,10 +528,10 @@ final syncMessageProvider = AsyncNotifierProvider<SyncMessageNotifier, String>(S
 
 class GithubScopedOauthNotifier extends SettingNotifier<bool> {
   @override
-  Future<bool> read() => uiSettingsManager.getBool(StorageKey.setman_githubScopedOauth);
+  Future<bool> read(SettingsManager manager) => manager.getBool(StorageKey.setman_githubScopedOauth);
 
   @override
-  Future<void> write(bool value) => uiSettingsManager.setBool(StorageKey.setman_githubScopedOauth, value);
+  Future<void> write(SettingsManager manager, bool value) => manager.setBool(StorageKey.setman_githubScopedOauth, value);
 }
 
 final githubScopedOauthProvider = AsyncNotifierProvider<GithubScopedOauthNotifier, bool>(GithubScopedOauthNotifier.new);
@@ -627,20 +659,20 @@ final premiumStatusProvider = NotifierProvider<PremiumStatusNotifier, bool?>(Pre
 
 class RemoteNameNotifier extends SettingNotifier<String> {
   @override
-  Future<String> read() => uiSettingsManager.getRemote();
+  Future<String> read(SettingsManager manager) => manager.getRemote();
 
   @override
-  Future<void> write(String value) => uiSettingsManager.setStringNullable(StorageKey.setman_remote, value);
+  Future<void> write(SettingsManager manager, String value) => manager.setStringNullable(StorageKey.setman_remote, value);
 }
 
 final remoteNameProvider = AsyncNotifierProvider<RemoteNameNotifier, String>(RemoteNameNotifier.new);
 
 class PinnedShowcaseFeaturesNotifier extends SettingNotifier<List<String>> {
   @override
-  Future<List<String>> read() => uiSettingsManager.getStringList(StorageKey.setman_pinnedShowcaseFeatures);
+  Future<List<String>> read(SettingsManager manager) => manager.getStringList(StorageKey.setman_pinnedShowcaseFeatures);
 
   @override
-  Future<void> write(List<String> value) => uiSettingsManager.setStringList(StorageKey.setman_pinnedShowcaseFeatures, value);
+  Future<void> write(SettingsManager manager, List<String> value) => manager.setStringList(StorageKey.setman_pinnedShowcaseFeatures, value);
 }
 
 final pinnedShowcaseFeaturesProvider = AsyncNotifierProvider<PinnedShowcaseFeaturesNotifier, List<String>>(PinnedShowcaseFeaturesNotifier.new);

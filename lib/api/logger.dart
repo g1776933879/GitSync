@@ -5,15 +5,14 @@ import 'dart:io';
 import 'package:GitSync/api/accessibility_service_helper.dart';
 import 'package:GitSync/api/helper.dart';
 import 'package:GitSync/api/issue_duplicate_finder.dart';
+import 'package:GitSync/api/remote_censor.dart';
 import 'package:GitSync/api/manager/auth/github_manager.dart';
 import 'package:GitSync/api/manager/settings_manager.dart';
-import 'package:GitSync/main.dart';
 import 'package:GitSync/type/git_provider.dart';
 import 'package:GitSync/ui/dialog/github_issue_oauth.dart' as GithubIssueOauthDialog;
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:GitSync/constant/strings.dart';
 import 'package:GitSync/api/manager/storage.dart';
@@ -126,7 +125,6 @@ enum From { GLOBAL_SETTINGS, ERROR_DIALOG, CODE_EDITOR, SYNC_DURING_DETACHED_HEA
 
 void notificationClicked(NotificationResponse _) {
   Logger.notifClicked = true;
-  runApp(const ProviderScope(child: MyApp()));
 }
 
 class Logger {
@@ -146,19 +144,19 @@ class Logger {
   }
 
   static void log(dynamic message, {LogType type = LogType.TEST}) {
-    i("${type.name}: ${message?.toString() ?? "null"}");
+    i(censorRemotesIn("${type.name}: ${message?.toString() ?? "null"}"));
   }
 
   static void gmLog(dynamic message, {LogType type = LogType.TEST}) {
-    w("${type.name}: ${message?.toString() ?? "null"}");
+    w(censorRemotesIn("${type.name}: ${message?.toString() ?? "null"}"));
   }
 
   static void logError(LogType type, dynamic error, StackTrace stackTrace, {String? errorContent, bool causeError = true}) async {
-    e("${type.name}: ${"${stackTrace.toString()}\nError: ${error.toString()}"}");
+    e(censorRemotesIn("${type.name}: ${"${stackTrace.toString()}\nError: ${error.toString()}"}"));
     if (!causeError) return;
 
-    await repoManager.setStringNullable(StorageKey.repoman_erroring, errorContent ?? error.toString());
-    await sendBugReportNotification(errorContent);
+    await repoManager.setStringNullable(StorageKey.repoman_erroring, censorRemotesIn(errorContent ?? error.toString()));
+    await sendBugReportNotification(errorContent == null ? null : censorRemotesIn(errorContent));
   }
 
   static Future<void> dismissError(BuildContext? context) async {
@@ -350,6 +348,8 @@ $logs
 
     String appVersion = '${packageInfo.version}+${packageInfo.buildNumber}';
 
+    final remoteUrl = (await uiSettingsManager.getStringList(StorageKey.setman_remoteUrlLink)).firstOrNull;
+
     final entries = <(String, String)>[
       ('Platform', Platform.isIOS ? 'iOS' : 'Android'),
       ('Device Model', deviceModel),
@@ -359,6 +359,7 @@ $logs
         'Git Provider',
         '${await uiSettingsManager.getStringNullable(StorageKey.setman_gitProvider)}${await uiSettingsManager.getBool(StorageKey.setman_githubScopedOauth) ? " (scoped)" : ""}',
       ),
+      if (remoteUrl != null && remoteUrl.isNotEmpty) ('Remote', censorRemote(remoteUrl)),
     ];
 
     if (await AccessibilityServiceHelper.isAccessibilityServiceEnabled()) {
@@ -406,6 +407,6 @@ $logs
       logFile = File(fileWithMax.path);
     }
     final logsString = (await logFile.exists()) ? (await logFile.readAsLines()).join("\n") : "";
-    return logsString;
+    return censorRemotesIn(logsString);
   }
 }

@@ -9,6 +9,7 @@ import 'package:GitSync/api/helper.dart';
 import 'package:GitSync/type/git_provider.dart';
 import 'package:path_provider/path_provider.dart';
 import '../logger.dart';
+import '../remote_censor.dart';
 import 'package:GitSync/api/manager/storage.dart';
 import '../manager/settings_manager.dart';
 import '../../constant/strings.dart';
@@ -100,6 +101,7 @@ class GitManager {
     "PEM preamble contains invalid data": () async => pemPreambleError,
     "cannot push non-fastforwardable reference": () async => cannotPushNonFastforwardableError,
     "error loading known_hosts": () async => errorLoadingKnownHostsError,
+    httpNotFound: () async => httpNotFoundError,
   };
 
   static final List<String> resyncStrings = ["uncommitted changes exist in index", "unstaged changes exist in workdir"];
@@ -318,6 +320,10 @@ class GitManager {
       return uncommittedChangeOverwrittenError;
     }
     if (error.contains(failedToReadIndex)) return failedToReadIndexError;
+    if (error.toLowerCase().contains(noRouteToHost)) return noRouteToHostError;
+    if (error.toLowerCase().contains(failedHostLookup)) return failedHostLookupError;
+    if (message.contains(theIndexIsLocked)) return theIndexIsLockedError;
+    if (message.contains(failedToLockFile)) return failedToLockFileError;
     return message;
   }
 
@@ -678,16 +684,16 @@ class GitManager {
     return false;
   }
 
-  static Future<List<GitManagerRs.Commit>> getInitialRecentCommits() async {
-    return (await uiSettingsManager.getStringList(
+  static Future<List<GitManagerRs.Commit>> getInitialRecentCommits([SettingsManager? setman]) async {
+    return (await (setman ?? uiSettingsManager).getStringList(
       StorageKey.setman_recentCommits,
     )).map((item) => CommitJson.fromJson(jsonDecode(stringToBase64.decode(item)))).toList();
   }
 
-  static Future<List<GitManagerRs.Commit>> getRecentCommits({int priority = 1, int? repoIndex}) async {
+  static Future<List<GitManagerRs.Commit>?> getRecentCommits({int priority = 1, int? repoIndex}) async {
     final resolvedIndex = await _resolveRepoIndex(repoIndex);
     final setman = await _resolveSettingsManager(repoIndex);
-    final cachedCommits = await getInitialRecentCommits();
+    final cachedCommits = await getInitialRecentCommits(await SettingsManager.scoped(resolvedIndex));
     final cachedDiffStats = <String, (int, int)>{for (final c in cachedCommits) c.reference: (c.additions, c.deletions)};
     final result = await _runWithLock(priority: priority, GitManagerRs.commitListRunWithLock, resolvedIndex, LogType.RecentCommits, (dirPath) async {
       try {
@@ -700,21 +706,22 @@ class GitManager {
         );
       } catch (e, stackTrace) {
         Logger.logError(LogType.RecentCommits, e, stackTrace);
-        return <GitManagerRs.Commit>[];
+        return null;
       }
     });
 
-    return result ?? <GitManagerRs.Commit>[];
+    return result;
   }
 
-  static Future<List<GitManagerRs.Commit>> getMoreRecentCommits(int skip, {int priority = 1, int? repoIndex}) async {
+  static Future<List<GitManagerRs.Commit>?> getMoreRecentCommits(int skip, {int priority = 1, int? repoIndex}) async {
+    final resolvedIndex = await _resolveRepoIndex(repoIndex);
     final setman = await _resolveSettingsManager(repoIndex);
-    final cachedCommits = await getInitialRecentCommits();
+    final cachedCommits = await getInitialRecentCommits(await SettingsManager.scoped(resolvedIndex));
     final cachedDiffStats = <String, (int, int)>{for (final c in cachedCommits) c.reference: (c.additions, c.deletions)};
     final result = await _runWithLock(
       priority: priority,
       GitManagerRs.commitListRunWithLock,
-      await _resolveRepoIndex(repoIndex),
+      resolvedIndex,
       LogType.RecentCommits,
       (dirPath) async {
         try {
@@ -727,11 +734,11 @@ class GitManager {
           );
         } catch (e, stackTrace) {
           Logger.logError(LogType.RecentCommits, e, stackTrace);
-          return <GitManagerRs.Commit>[];
+          return null;
         }
       },
     );
-    return result ?? <GitManagerRs.Commit>[];
+    return result;
   }
 
   static Future<Map<String, (int, int)>> getCommitDiffStats(List<String> references, {int priority = 1, int? repoIndex}) async {
@@ -1149,7 +1156,7 @@ class GitManager {
 
         final configContent = await configFile.readAsString();
 
-        print(configContent);
+        print(censorRemotesIn(configContent));
 
         print(remoteName);
 
@@ -1162,12 +1169,12 @@ class GitManager {
 
         String remoteUrl = match.group(1)!.trim();
 
-        print(remoteUrl);
-        print(_convertToWebUrl(remoteUrl));
+        print(censorRemote(remoteUrl));
+        print(censorRemote(_convertToWebUrl(remoteUrl)));
 
         return (remoteUrl, _convertToWebUrl(remoteUrl));
       } catch (e) {
-        print('Error getting Git remote URL: $e');
+        print(censorRemotesIn('Error getting Git remote URL: $e'));
         return null;
       }
     });

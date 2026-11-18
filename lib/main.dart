@@ -459,6 +459,7 @@ void onServiceStart(ServiceInstance service) async {
 
   _onGitOp(service, LogType.RecentCommits, (event) async {
     final result = await GitManager.getRecentCommits();
+    if (result == null) throw OperationNotExecuted();
     return {"result": result.map((item) => utf8.fuse(base64).encode(jsonEncode(item.toJson()))).toList()};
   });
 
@@ -1027,14 +1028,18 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
     await reloadTheme(context);
     if (token != _reloadToken) return;
     if (mounted) setState(() {});
-    ref.read(branchNameProvider.notifier).refresh();
-    ref.read(remoteUrlLinkProvider.notifier).refresh();
-    ref.read(listRemotesProvider.notifier).refresh();
-    ref.read(branchNamesProvider.notifier).refresh();
-    ref.read(conflictingFilesProvider.notifier).refresh();
-    await ref.read(recentCommitsProvider.notifier).refresh();
-    await ref.read(recommendedActionProvider.notifier).refresh();
-    await ref.read(recentCommitsProvider.notifier).loadDiffStats();
+    final hasGitDirPath = (await uiSettingsManager.getString(StorageKey.setman_gitDirPath)).isNotEmpty;
+    if (token != _reloadToken) return;
+    if (hasGitDirPath) {
+      ref.read(branchNameProvider.notifier).refresh();
+      ref.read(remoteUrlLinkProvider.notifier).refresh();
+      ref.read(listRemotesProvider.notifier).refresh();
+      ref.read(branchNamesProvider.notifier).refresh();
+      ref.read(conflictingFilesProvider.notifier).refresh();
+      await ref.read(recentCommitsProvider.notifier).refresh();
+      await ref.read(recommendedActionProvider.notifier).refresh();
+      await ref.read(recentCommitsProvider.notifier).loadDiffStats();
+    }
     ref.invalidate(syncMessageEnabledProvider);
     ref.invalidate(lastSyncMethodProvider);
     ref.invalidate(clientModeEnabledProvider);
@@ -1050,7 +1055,7 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
     ref.invalidate(featureCountsProvider);
     ref.invalidate(gitDirPathProvider);
     ref.invalidate(remoteNameProvider);
-    ref.read(submodulePathsProvider.notifier).refresh();
+    if (hasGitDirPath) ref.read(submodulePathsProvider.notifier).refresh();
     if (token != _reloadToken) return;
     if (mounted) setState(() {});
   }
@@ -2170,8 +2175,14 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
                                                   if (text.isEmpty) return;
 
                                                   final repomanReponames = await repoManager.getStringList(StorageKey.repoman_repoNames);
+                                                  final repomanRepoindex = await repoManager.getInt(StorageKey.repoman_repoIndex);
+
+                                                  if (repomanReponames[repomanRepoindex] != text && repomanReponames.contains(text)) {
+                                                    text = "${text}_alt";
+                                                  }
+
                                                   await uiSettingsManager.renameNamespace(text);
-                                                  repomanReponames[await repoManager.getInt(StorageKey.repoman_repoIndex)] = text;
+                                                  repomanReponames[repomanRepoindex] = text;
 
                                                   await repoManager.setStringList(StorageKey.repoman_repoNames, repomanReponames);
 
@@ -4051,9 +4062,6 @@ class _MyHomePageState extends ConsumerState<MyHomePage> with WidgetsBindingObse
                                                                                         ref.read(branchNameProvider.notifier).set(null);
                                                                                         ref.read(remoteUrlLinkProvider.notifier).set(null);
                                                                                         ref.read(listRemotesProvider.notifier).set([]);
-                                                                                        ref
-                                                                                            .read(gitProviderProvider.notifier)
-                                                                                            .set(GitProvider.GITHUB);
                                                                                         ref.read(recommendedActionProvider.notifier).set(null);
                                                                                         ref.read(branchNamesProvider.notifier).set({});
                                                                                         ref.read(hasGitFiltersProvider.notifier).set(false);

@@ -97,6 +97,17 @@ const String failedToReadIndexError = "The repository index is corrupted or miss
 const String errorLoadingKnownHosts = "error loading known_hosts";
 const String errorLoadingKnownHostsError =
     "Could not load SSH known hosts file. Try toggling \"Disable SSL Verification\" in repository settings, or re-enter your SSH credentials.";
+const String noRouteToHost = "no route to host";
+const String noRouteToHostError = "Could not reach the remote server. Check your internet connection and try again.";
+const String httpNotFound = "unexpected http status code: 404";
+const String httpNotFoundError = "Remote not found. Check your network connection or the remote URL.";
+const String failedHostLookup = "failed host lookup";
+const String failedHostLookupError = "Could not look up the remote server address. Check your internet connection and try again.";
+const String theIndexIsLockedError =
+    "A previous operation left a lock file behind, so this one could not run. Wait for any sync in progress to finish, then try again. If it keeps happening, delete .git/index.lock from the repository folder.";
+const String failedToLockFile = "failed to lock file";
+const String failedToLockFileError =
+    "A lock file is blocking this operation. Wait for any sync in progress to finish, then try again. If it keeps happening, delete the leftover .lock file from the repository folder.";
 
 // Sync Dialogs
 const String resolvingMerge = "Resolving merge…";
